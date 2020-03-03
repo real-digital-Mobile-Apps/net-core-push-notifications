@@ -6,6 +6,11 @@ using System.Threading.Tasks;
 using CorePush.Utils;
 using Newtonsoft.Json.Linq;
 
+/// <summary>
+/// Supports sending Push Notifications via Huawei Mobile Services
+/// See for reference:
+/// https://developer.huawei.com/consumer/en/doc/development/HMS-Guides/push-introduction
+/// </summary>
 namespace CorePush.Huawei
 {
     public class HmsSender
@@ -13,13 +18,19 @@ namespace CorePush.Huawei
         private readonly string oAuthUrl = "https://oauth-login.cloud.huawei.com/oauth2/v2/token";
         private readonly int clientId;
         private readonly string clientSecret;
-        private readonly string hmsUrl = "https://push-api.cloud.huawei.com/v1/{0}/messages:send";
+        private readonly string hmsUrl;
         private readonly Lazy<HttpClient> lazyHttp = new Lazy<HttpClient>();
 
+        /// <summary>
+        /// Creates a new HmsSender instance
+        /// </summary>
+        /// <param name="clientId">Huawei App ID</param>
+        /// <param name="clientSecret">Huawei Client Secret</param>
         public HmsSender(int clientId, string clientSecret)
         {
             this.clientId = clientId;
             this.clientSecret = clientSecret;
+            this.hmsUrl = $"https://push-api.cloud.huawei.com/v1/{clientId}/messages:send";
         }
 
         /// <summary>
@@ -75,12 +86,11 @@ namespace CorePush.Huawei
         /// See for reference:
         /// https://developer.huawei.com/consumer/en/doc/development/HMS-References/push-sendapi#h1-1576153506293
         /// </summary>
-        /// <param name="appId">The Huawei App ID</param>
         /// <param name="accessToken">The OAuth Access Token</param>
         /// <param name="payload">Push Message</param>
         /// <returns>Send response</returns>
         /// <exception cref="HttpRequestException">Throws exception when not successful</exception>
-        public async Task<HmsSendResponse> SendAsync(string appId, string accessToken, object payload)
+        public async Task<HmsSendResponse> SendAsync(string accessToken, object payload)
         {
             var jsonObject = JObject.FromObject(payload);
             var json = jsonObject.ToString();
