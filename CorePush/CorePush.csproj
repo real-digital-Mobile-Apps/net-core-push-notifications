@@ -27,4 +27,7 @@
     <PackageReference Include="System.Security.Cryptography.Cng" Version="4.7.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Huawei\" />
+  </ItemGroup>
 </Project>
