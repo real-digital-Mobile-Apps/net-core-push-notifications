@@ -13,7 +13,7 @@ using Newtonsoft.Json.Linq;
 /// </summary>
 namespace CorePush.Huawei
 {
-    public class HmsSender
+    public class HmsSender : IDisposable
     {
         private readonly string oAuthUrl = "https://oauth-login.cloud.huawei.com/oauth2/v2/token";
         private readonly int clientId;
@@ -104,6 +104,14 @@ namespace CorePush.Huawei
             var responseString = await response.Content.ReadAsStringAsync();
 
             return JsonHelper.Deserialize<HmsSendResponse>(responseString);
+        }
+
+        public void Dispose()
+        {
+            if (lazyHttp.IsValueCreated)
+            {
+                lazyHttp.Value.Dispose();
+            }
         }
     }
 }
