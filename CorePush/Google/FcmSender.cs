@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
-using CorePush.Utils;
-using Newtonsoft.Json.Linq;
+using FirebaseAdmin;
+using FirebaseAdmin.Messaging;
+using Google.Apis.Auth.OAuth2;
 
 namespace CorePush.Google
 {
@@ -13,15 +13,18 @@ namespace CorePush.Google
     /// </summary>
     public class FcmSender : IDisposable
     {
-        private readonly string fcmUrl = "https://fcm.googleapis.com/fcm/send";
-        private readonly string serverKey;
-        private readonly string senderId;
-        private readonly Lazy<HttpClient> lazyHttp = new Lazy<HttpClient>();
-
-        public FcmSender(string serverKey, string senderId)
+        /// <summary>
+        /// Creates a new FcmSender instance.
+        /// For reference for credentialsJson see:
+        /// https://firebase.google.com/docs/cloud-messaging/auth-server
+        /// </summary>
+        /// <param name="credentialsJson">Service Account JSON File</param>
+        public FcmSender(string credentialsJson)
         {
-            this.serverKey = serverKey;
-            this.senderId = senderId;
+            FirebaseApp.Create(new AppOptions()
+            {
+                Credential = GoogleCredential.FromJson(credentialsJson)
+            });
         }
 
         /// <summary>
@@ -33,23 +36,10 @@ namespace CorePush.Google
         /// <param name="deviceId">Device token</param>
         /// <param name="payload">Notification payload that will be serialized using Newtonsoft.Json package</param>
         /// <exception cref="HttpRequestException">Throws exception when not successful</exception>
-        public async Task<FcmResponse> SendAsync(string deviceId, object payload)
+        public async Task<string> SendAsync(string deviceId, Message payload)
         {
-            var jsonObject = JObject.FromObject(payload);
-            jsonObject.Remove("to");
-            jsonObject.Add("to", JToken.FromObject(deviceId));
-            var json = jsonObject.ToString();
-            
-            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, fcmUrl);
-            httpRequest.Headers.Add("Authorization", $"key = {serverKey}");
-            httpRequest.Headers.Add("Sender", $"id = {senderId}");
-            httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            using var response = await lazyHttp.Value.SendAsync(httpRequest);
-            response.EnsureSuccessStatusCode();
-            var responseString = await response.Content.ReadAsStringAsync();
-
-            return JsonHelper.Deserialize<FcmResponse>(responseString);
+            payload.Token = deviceId;
+            return await FirebaseMessaging.DefaultInstance.SendAsync(payload);
         }
 
         /// <summary>
@@ -60,38 +50,32 @@ namespace CorePush.Google
         /// </summary>
         /// <param name="multiplePayloads">key = deviceId, value = payload</param>
         /// <exception cref="HttpRequestException">Throws exception when not successful</exception>
-        public async Task<FcmResponse> SendMultipleAsync(Dictionary<string, object> multiplePayloads)
+        public async Task<List<string>> SendMultipleAsync(List<string> deviceIds, MulticastMessage payload)
         {
-            var batchRequest = new HttpRequestMessage(HttpMethod.Post, fcmUrl);
-            var batchContent = new MultipartContent("mixed", "--subrequest_boundary");
-            batchRequest.Content = batchContent;
+            payload.Tokens = deviceIds;
 
-            foreach (var data in multiplePayloads)
+            var response = await FirebaseMessaging.DefaultInstance.SendMulticastAsync(payload);
+            if (response.FailureCount > 0)
             {
-                var jsonObject = JObject.FromObject(data.Value);
-                jsonObject.Remove("to");
-                jsonObject.Add("to", JToken.FromObject(data.Key));
-                var json = jsonObject.ToString();
+                var failedTokens = new List<string>();
+                for (var i = 0; i < response.Responses.Count; i++)
+                {
+                    if (!response.Responses[i].IsSuccess)
+                    {
+                        // The order of responses corresponds to the order of the registration tokens.
+                        failedTokens.Add(deviceIds[i]);
+                    }
+                }
 
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-                content.Headers.Add("Authorization", $"key = {serverKey}");
-                content.Headers.Add("Sender", $"id = {senderId}");
-                batchContent.Add(content);
+                return failedTokens;
             }
-
-            using var response = await lazyHttp.Value.SendAsync(batchRequest);
-            response.EnsureSuccessStatusCode();
-            var responseString = await response.Content.ReadAsStringAsync();
-
-            return JsonHelper.Deserialize<FcmResponse>(responseString);
+            else
+                return new List<string>();
         }
 
         public void Dispose()
         {
-            if (lazyHttp.IsValueCreated)
-            {
-                lazyHttp.Value.Dispose();
-            }
+            FirebaseApp.DefaultInstance.Delete();
         }
     }
 }
