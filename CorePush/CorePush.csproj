@@ -28,4 +28,7 @@
     <PackageReference Include="FirebaseAdmin" Version="1.9.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Huawei\" />
+  </ItemGroup>
 </Project>
