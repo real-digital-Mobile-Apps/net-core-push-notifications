@@ -101,7 +101,7 @@ namespace CorePush.Apple
             var header = JsonHelper.Serialize(new { alg = "ES256", kid = p8privateKeyId });
             var payload = JsonHelper.Serialize(new { iss = teamId, iat = ToEpoch(DateTime.UtcNow) });
             
-            using var dsa = ECDsa.Create("ECDsaCng");
+            using var dsa = ECDsa.Create("ECDsa");
 
             var keyBytes = Convert.FromBase64String(p8privateKey);
             dsa.ImportPkcs8PrivateKey(keyBytes, out _);
