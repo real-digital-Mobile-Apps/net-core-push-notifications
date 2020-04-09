@@ -21,10 +21,17 @@ namespace CorePush.Google
         /// <param name="credentialsJson">Service Account JSON File</param>
         public FcmSender(string credentialsJson)
         {
-            FirebaseApp.Create(new AppOptions()
+            try
             {
-                Credential = GoogleCredential.FromJson(credentialsJson)
-            });
+                FirebaseApp.Create(new AppOptions()
+                {
+                    Credential = GoogleCredential.FromJson(credentialsJson)
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex.Message);
+            }
         }
 
         /// <summary>
@@ -38,8 +45,16 @@ namespace CorePush.Google
         /// <exception cref="HttpRequestException">Throws exception when not successful</exception>
         public async Task<string> SendAsync(string deviceId, Message payload)
         {
-            payload.Token = deviceId;
-            return await FirebaseMessaging.DefaultInstance.SendAsync(payload);
+            try
+            {
+                payload.Token = deviceId;
+                return await FirebaseMessaging.DefaultInstance.SendAsync(payload);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex.Message);
+            }
+            return "";
         }
 
         /// <summary>
@@ -52,25 +67,33 @@ namespace CorePush.Google
         /// <exception cref="HttpRequestException">Throws exception when not successful</exception>
         public async Task<List<string>> SendMultipleAsync(List<string> deviceIds, MulticastMessage payload)
         {
-            payload.Tokens = deviceIds;
-
-            var response = await FirebaseMessaging.DefaultInstance.SendMulticastAsync(payload);
-            if (response.FailureCount > 0)
+            try
             {
-                var failedTokens = new List<string>();
-                for (var i = 0; i < response.Responses.Count; i++)
-                {
-                    if (!response.Responses[i].IsSuccess)
-                    {
-                        // The order of responses corresponds to the order of the registration tokens.
-                        failedTokens.Add(deviceIds[i]);
-                    }
-                }
+                payload.Tokens = deviceIds;
 
-                return failedTokens;
+                var response = await FirebaseMessaging.DefaultInstance.SendMulticastAsync(payload);
+                if (response.FailureCount > 0)
+                {
+                    var failedTokens = new List<string>();
+                    for (var i = 0; i < response.Responses.Count; i++)
+                    {
+                        if (!response.Responses[i].IsSuccess)
+                        {
+                            // The order of responses corresponds to the order of the registration tokens.
+                            failedTokens.Add(deviceIds[i]);
+                        }
+                    }
+
+                    return failedTokens;
+                }
+                else
+                    return new List<string>();
             }
-            else
-                return new List<string>();
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex.Message);
+            }
+            return new List<string>();
         }
 
         public void Dispose()
