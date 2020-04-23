@@ -16,7 +16,7 @@ namespace CorePush.Huawei
     public class HmsSender : IDisposable
     {
         private readonly string oAuthUrl = "https://oauth-login.cloud.huawei.com/oauth2/v2/token";
-        private readonly int clientId;
+        private readonly string clientId;
         private readonly string clientSecret;
         private readonly string hmsUrl;
         private readonly Lazy<HttpClient> lazyHttp = new Lazy<HttpClient>();
@@ -26,7 +26,7 @@ namespace CorePush.Huawei
         /// </summary>
         /// <param name="clientId">Huawei App ID</param>
         /// <param name="clientSecret">Huawei Client Secret</param>
-        public HmsSender(int clientId, string clientSecret)
+        public HmsSender(string clientId, string clientSecret)
         {
             this.clientId = clientId;
             this.clientSecret = clientSecret;
