@@ -42,18 +42,26 @@ namespace CorePush.Huawei
         /// <exception cref="HttpRequestException">Throws exception when not successful</exception>
         public async Task<HmsOAuthResponse> AuthenticateAsync()
         {
-            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, oAuthUrl);
-            var payload = new List<KeyValuePair<string, string>>();
-            payload.Add(new KeyValuePair<string, string>("grant_type", "client_credentials"));
-            payload.Add(new KeyValuePair<string, string>("client_id", $"{clientId}"));
-            payload.Add(new KeyValuePair<string, string>("client_secret", clientSecret));
-            httpRequest.Content = new FormUrlEncodedContent(payload);
+            try
+            {
+                using var httpRequest = new HttpRequestMessage(HttpMethod.Post, oAuthUrl);
+                var payload = new List<KeyValuePair<string, string>>();
+                payload.Add(new KeyValuePair<string, string>("grant_type", "client_credentials"));
+                payload.Add(new KeyValuePair<string, string>("client_id", clientId));
+                payload.Add(new KeyValuePair<string, string>("client_secret", clientSecret));
+                httpRequest.Content = new FormUrlEncodedContent(payload);
 
-            using var response = await lazyHttp.Value.SendAsync(httpRequest);
-            response.EnsureSuccessStatusCode();
-            var responseString = await response.Content.ReadAsStringAsync();
+                using var response = await lazyHttp.Value.SendAsync(httpRequest);
+                //response.EnsureSuccessStatusCode();
+                var responseString = await response.Content.ReadAsStringAsync();
 
-            return JsonHelper.Deserialize<HmsOAuthResponse>(responseString);
+                return JsonHelper.Deserialize<HmsOAuthResponse>(responseString);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex.Message + "\r\n" + ex.StackTrace);
+            }
+            return null;
         }
 
         /// <summary>
@@ -66,19 +74,27 @@ namespace CorePush.Huawei
         /// <exception cref="HttpRequestException">Throws exception when not successful</exception>
         public async Task<HmsOAuthResponse> RefreshTokenAsync(string refreshToken)
         {
-            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, oAuthUrl);
-            var payload = new List<KeyValuePair<string, string>>();
-            payload.Add(new KeyValuePair<string, string>("grant_type", "client_credentials"));
-            payload.Add(new KeyValuePair<string, string>("refresh_token", refreshToken));
-            payload.Add(new KeyValuePair<string, string>("client_id", $"{clientId}"));
-            payload.Add(new KeyValuePair<string, string>("client_secret", clientSecret));
-            httpRequest.Content = new FormUrlEncodedContent(payload);
+            try
+            {
+                using var httpRequest = new HttpRequestMessage(HttpMethod.Post, oAuthUrl);
+                var payload = new List<KeyValuePair<string, string>>();
+                payload.Add(new KeyValuePair<string, string>("grant_type", "client_credentials"));
+                payload.Add(new KeyValuePair<string, string>("refresh_token", refreshToken));
+                payload.Add(new KeyValuePair<string, string>("client_id", $"{clientId}"));
+                payload.Add(new KeyValuePair<string, string>("client_secret", clientSecret));
+                httpRequest.Content = new FormUrlEncodedContent(payload);
 
-            using var response = await lazyHttp.Value.SendAsync(httpRequest);
-            response.EnsureSuccessStatusCode();
-            var responseString = await response.Content.ReadAsStringAsync();
+                using var response = await lazyHttp.Value.SendAsync(httpRequest);
+                //response.EnsureSuccessStatusCode();
+                var responseString = await response.Content.ReadAsStringAsync();
 
-            return JsonHelper.Deserialize<HmsOAuthResponse>(responseString);
+                return JsonHelper.Deserialize<HmsOAuthResponse>(responseString);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex.Message + "\r\n" + ex.StackTrace);
+            }
+            return null;
         }
 
         /// <summary>
@@ -92,18 +108,26 @@ namespace CorePush.Huawei
         /// <exception cref="HttpRequestException">Throws exception when not successful</exception>
         public async Task<HmsSendResponse> SendAsync(string accessToken, object payload)
         {
-            var jsonObject = JObject.FromObject(payload);
-            var json = jsonObject.ToString();
+            try
+            {
+                var jsonObject = JObject.FromObject(payload);
+                var json = jsonObject.ToString();
 
-            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, hmsUrl);
-            httpRequest.Headers.Add("Authorization", $"Bearer {accessToken}");
-            httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
+                using var httpRequest = new HttpRequestMessage(HttpMethod.Post, hmsUrl);
+                httpRequest.Headers.Add("Authorization", $"Bearer {accessToken}");
+                httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            using var response = await lazyHttp.Value.SendAsync(httpRequest);
-            response.EnsureSuccessStatusCode();
-            var responseString = await response.Content.ReadAsStringAsync();
+                using var response = await lazyHttp.Value.SendAsync(httpRequest);
+                response.EnsureSuccessStatusCode();
+                var responseString = await response.Content.ReadAsStringAsync();
 
-            return JsonHelper.Deserialize<HmsSendResponse>(responseString);
+                return JsonHelper.Deserialize<HmsSendResponse>(responseString);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex.Message + "\r\n" + ex.StackTrace);
+            }
+            return null;
         }
 
         public void Dispose()
