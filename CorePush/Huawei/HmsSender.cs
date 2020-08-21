@@ -28,9 +28,17 @@ namespace CorePush.Huawei
         /// <param name="clientSecret">Huawei Client Secret</param>
         public HmsSender(string clientId, string clientSecret)
         {
-            this.clientId = clientId;
-            this.clientSecret = clientSecret;
-            this.hmsUrl = $"https://push-api.cloud.huawei.com/v1/{clientId}/messages:send";
+            var tag = this + ".Ctor";
+            try
+            {
+                this.clientId = clientId;
+                this.clientSecret = clientSecret;
+                this.hmsUrl = $"https://push-api.cloud.huawei.com/v1/{clientId}/messages:send";
+            }
+            catch (Exception ex)
+            {
+                Backend.Track.Error(tag, ex.Message + "\r\n" + ex.StackTrace);
+            }
         }
 
         /// <summary>
@@ -42,6 +50,7 @@ namespace CorePush.Huawei
         /// <exception cref="HttpRequestException">Throws exception when not successful</exception>
         public async Task<HmsOAuthResponse> AuthenticateAsync()
         {
+            var tag = this + ".AuthenticateAsync";
             try
             {
                 using var httpRequest = new HttpRequestMessage(HttpMethod.Post, oAuthUrl);
@@ -59,7 +68,7 @@ namespace CorePush.Huawei
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex.Message + "\r\n" + ex.StackTrace);
+                Backend.Track.Error(tag, ex.Message + "\r\n" + ex.StackTrace);
             }
             return null;
         }
@@ -74,6 +83,7 @@ namespace CorePush.Huawei
         /// <exception cref="HttpRequestException">Throws exception when not successful</exception>
         public async Task<HmsOAuthResponse> RefreshTokenAsync(string refreshToken)
         {
+            var tag = this + ".RefreshTokenAsync";
             try
             {
                 using var httpRequest = new HttpRequestMessage(HttpMethod.Post, oAuthUrl);
@@ -92,7 +102,7 @@ namespace CorePush.Huawei
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex.Message + "\r\n" + ex.StackTrace);
+                Backend.Track.Error(tag, ex.Message + "\r\n" + ex.StackTrace);
             }
             return null;
         }
@@ -108,6 +118,7 @@ namespace CorePush.Huawei
         /// <exception cref="HttpRequestException">Throws exception when not successful</exception>
         public async Task<HmsSendResponse> SendAsync(string accessToken, object payload)
         {
+            var tag = this + ".SendAsync";
             try
             {
                 var jsonObject = JObject.FromObject(payload);
@@ -118,14 +129,14 @@ namespace CorePush.Huawei
                 httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 using var response = await lazyHttp.Value.SendAsync(httpRequest);
-                response.EnsureSuccessStatusCode();
+                //response.EnsureSuccessStatusCode();
                 var responseString = await response.Content.ReadAsStringAsync();
 
                 return JsonHelper.Deserialize<HmsSendResponse>(responseString);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex.Message + "\r\n" + ex.StackTrace);
+                Backend.Track.Error(tag, ex.Message + "\r\n" + ex.StackTrace);
             }
             return null;
         }

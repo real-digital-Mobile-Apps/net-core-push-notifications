@@ -20,15 +20,19 @@
     <PackageTags>push-notifications apn fcm firebase android-push-notifications ios-push-notifications</PackageTags>
     <RepositoryUrl>https://github.com/andrei-m-code/CorePush</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <ReleaseVersion>1.2.0</ReleaseVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="System.Security.Cryptography.Cng" Version="4.7.0" />
-    <PackageReference Include="FirebaseAdmin" Version="1.9.2" />
+    <PackageReference Include="FirebaseAdmin" Version="1.15.0" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Huawei\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\azureappbackend\Backend.Shared\Backend.Shared.csproj" />
   </ItemGroup>
 </Project>

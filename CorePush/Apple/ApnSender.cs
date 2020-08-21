@@ -39,13 +39,21 @@ namespace CorePush.Apple
         /// <param name="server">Development or Production server</param>
         public ApnSender(string p8privateKey, string p8privateKeyId, string teamId, string appBundleIdentifier, ApnServerType server)
         {
-            this.p8privateKey = p8privateKey;
-            this.p8privateKeyId = p8privateKeyId;
-            this.teamId = teamId;
-            this.server = server;
-            this.appBundleIdentifier = appBundleIdentifier;
-            this.jwtToken = new Lazy<string>(() => CreateJwtToken());
-            this.http = new Lazy<HttpClient>(() => new HttpClient());
+            var tag = this + ".Ctor";
+            try
+            {
+                this.p8privateKey = p8privateKey;
+                this.p8privateKeyId = p8privateKeyId;
+                this.teamId = teamId;
+                this.server = server;
+                this.appBundleIdentifier = appBundleIdentifier;
+                this.jwtToken = new Lazy<string>(() => CreateJwtToken());
+                this.http = new Lazy<HttpClient>(() => new HttpClient());
+            }
+            catch (Exception ex)
+            {
+                Backend.Track.Error(tag, ex.Message + "\r\n" + ex.StackTrace);
+            }
         }
 
         /// <summary>
@@ -64,55 +72,73 @@ namespace CorePush.Apple
             int apnsPriority = 10,
             bool isBackground = false)
         {
-            var path = $"/3/device/{deviceToken}";
-            var json = JsonHelper.Serialize(notification);
+            var tag = this + ".SendAsync";
+            try
+            {
+                var path = $"/3/device/{deviceToken}";
+                var json = JsonHelper.Serialize(notification);
 
-            var request = new HttpRequestMessage(HttpMethod.Post, new Uri(servers[server] + path))
-            {
-                Version = new Version(2, 0),
-                Content = new StringContent(json)
-            };
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("bearer", jwtToken.Value);
-            request.Headers.TryAddWithoutValidation(":method", "POST");
-            request.Headers.TryAddWithoutValidation(":path", path);
-            request.Headers.Add("apns-topic", appBundleIdentifier);
-            request.Headers.Add("apns-expiration", apnsExpiration.ToString());
-            request.Headers.Add("apns-priority", apnsPriority.ToString());
-            request.Headers.Add("apns-push-type", isBackground ? "background" : "alert"); // for iOS 13 required
-            if (!string.IsNullOrWhiteSpace(apnsId))
-            {
-                request.Headers.Add(apnidHeader, apnsId);
+                var request = new HttpRequestMessage(HttpMethod.Post, new Uri(servers[server] + path))
+                {
+                    Version = new Version(2, 0),
+                    Content = new StringContent(json)
+                };
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("bearer", jwtToken.Value);
+                request.Headers.TryAddWithoutValidation(":method", "POST");
+                request.Headers.TryAddWithoutValidation(":path", path);
+                request.Headers.Add("apns-topic", appBundleIdentifier);
+                request.Headers.Add("apns-expiration", apnsExpiration.ToString());
+                request.Headers.Add("apns-priority", apnsPriority.ToString());
+                request.Headers.Add("apns-push-type", isBackground ? "background" : "alert"); // for iOS 13 required
+                if (!string.IsNullOrWhiteSpace(apnsId))
+                {
+                    request.Headers.Add(apnidHeader, apnsId);
+                }
+
+                using var response = await http.Value.SendAsync(request);
+                var succeed = response.IsSuccessStatusCode;
+                var content = await response.Content.ReadAsStringAsync();
+                var error = JsonHelper.Deserialize<ApnsError>(content);
+
+                return new ApnsResponse
+                {
+                    IsSuccess = succeed,
+                    Error = error
+                };
             }
-
-            using var response = await http.Value.SendAsync(request);
-            var succeed = response.IsSuccessStatusCode;
-            var content = await response.Content.ReadAsStringAsync();
-            var error = JsonHelper.Deserialize<ApnsError>(content);
-
-            return new ApnsResponse
+            catch (Exception ex)
             {
-                IsSuccess = succeed,
-                Error = error
-            };
+                Backend.Track.Error(tag, ex.Message + "\r\n" + ex.StackTrace);
+            }
+            return null;
         }
 
         private string CreateJwtToken()
         {
-            var header = JsonHelper.Serialize(new { alg = "ES256", kid = p8privateKeyId });
-            var payload = JsonHelper.Serialize(new { iss = teamId, iat = ToEpoch(DateTime.UtcNow) });
-            
-            using var dsa = ECDsa.Create("ECDsa");
+            var tag = this + ".CreateJwtToken";
+            try
+            {
+                var header = JsonHelper.Serialize(new { alg = "ES256", kid = p8privateKeyId });
+                var payload = JsonHelper.Serialize(new { iss = teamId, iat = ToEpoch(DateTime.UtcNow) });
 
-            var keyBytes = Convert.FromBase64String(p8privateKey);
-            dsa.ImportPkcs8PrivateKey(keyBytes, out _);
-            
-            var headerBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(header));
-            var payloadBasae64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(payload));
-            var unsignedJwtData = $"{headerBase64}.{payloadBasae64}";
-            var unsignedJwtBytes = Encoding.UTF8.GetBytes(unsignedJwtData);
-            var signature = dsa.SignData(unsignedJwtBytes, 0, unsignedJwtBytes.Length, HashAlgorithmName.SHA256);
-            
-            return $"{unsignedJwtData}.{Convert.ToBase64String(signature)}";
+                using var dsa = ECDsa.Create("ECDsa");
+
+                var keyBytes = Convert.FromBase64String(p8privateKey);
+                dsa.ImportPkcs8PrivateKey(keyBytes, out _);
+
+                var headerBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(header));
+                var payloadBasae64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(payload));
+                var unsignedJwtData = $"{headerBase64}.{payloadBasae64}";
+                var unsignedJwtBytes = Encoding.UTF8.GetBytes(unsignedJwtData);
+                var signature = dsa.SignData(unsignedJwtBytes, 0, unsignedJwtBytes.Length, HashAlgorithmName.SHA256);
+
+                return $"{unsignedJwtData}.{Convert.ToBase64String(signature)}";
+            }
+            catch (Exception ex)
+            {
+                Backend.Track.Error(tag, ex.Message + "\r\n" + ex.StackTrace);
+            }
+            return null;
         }
 
         private static int ToEpoch(DateTime time)

@@ -21,6 +21,7 @@ namespace CorePush.Google
         /// <param name="credentialsJson">Service Account JSON File</param>
         public FcmSender(string credentialsJson)
         {
+            var tag = this + ".Ctor";
             try
             {
                 FirebaseApp.Create(new AppOptions()
@@ -30,7 +31,7 @@ namespace CorePush.Google
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex.Message);
+                Backend.Track.Error(tag, ex.Message + "\r\n" + ex.StackTrace);
             }
         }
 
@@ -45,6 +46,7 @@ namespace CorePush.Google
         /// <exception cref="HttpRequestException">Throws exception when not successful</exception>
         public async Task<string> SendAsync(string deviceId, Message payload)
         {
+            var tag = this + ".SendAsync";
             try
             {
                 payload.Token = deviceId;
@@ -52,7 +54,7 @@ namespace CorePush.Google
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex.Message);
+                Backend.Track.Error(tag, ex.Message + "\r\n" + ex.StackTrace);
             }
             return "";
         }
@@ -67,6 +69,7 @@ namespace CorePush.Google
         /// <exception cref="HttpRequestException">Throws exception when not successful</exception>
         public async Task<List<string>> SendMultipleAsync(List<string> deviceIds, MulticastMessage payload)
         {
+            var tag = this + ".SendMultipleAsync";
             try
             {
                 payload.Tokens = deviceIds;
@@ -81,6 +84,10 @@ namespace CorePush.Google
                         {
                             // The order of responses corresponds to the order of the registration tokens.
                             failedTokens.Add(deviceIds[i]);
+                            if (response.Responses[i].Exception.MessagingErrorCode != null)
+                                Backend.Track.Warning(tag, $"Sending to Device {deviceIds[i]} failed: {response.Responses[i].Exception.MessagingErrorCode}, {response.Responses[i].Exception.Message}");
+                            else
+                                Backend.Track.Warning(tag, $"Sending to Device {deviceIds[i]} failed: {response.Responses[i].Exception.ErrorCode}, {response.Responses[i].Exception.Message}");
                         }
                     }
 
@@ -91,9 +98,9 @@ namespace CorePush.Google
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex.Message);
+                Backend.Track.Error(tag, ex.Message + "\r\n" + ex.StackTrace);
             }
-            return new List<string>();
+            return deviceIds;
         }
 
         public void Dispose()
